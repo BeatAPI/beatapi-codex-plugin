@@ -5,13 +5,30 @@
   "description": "Codex plugin for BeatAPI AI music video and ecommerce video workflows.",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-mcp.mjs",
+    "build:check": "node scripts/build-mcp.mjs --check",
     "contract:sync": "node scripts/contract.mjs --write",
     "contract:check": "node scripts/contract.mjs --check",
-    "test": "node --test",
-    "verify": "npm run contract:check && npm test"
+    "runtime:sync": "node scripts/sync-runtime.mjs --write",
+    "runtime:check": "node scripts/sync-runtime.mjs --check",
+    "skill:sync": "node scripts/sync-skill.mjs --write",
+    "skill:check": "node scripts/sync-skill.mjs --check",
+    "marketplace:build": "node scripts/build-marketplace.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts",
+    "submission:build": "node scripts/build-submission.mjs",
+    "verify": "npm run contract:check && npm run skill:check && npm run runtime:check && npm run typecheck && npm test && npm run build:check && npm run marketplace:build && npm run submission:build"
   },
   "engines": {
     "node": ">=20.19.0 <21 || >=22.12.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@types/node": "26.1.1",
+    "esbuild": "0.28.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "zod": "4.4.3"
+  }
 }

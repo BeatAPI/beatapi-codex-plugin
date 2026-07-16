@@ -1,87 +1,134 @@
 ---
 name: beatapi-video
-description: Create, monitor, and troubleshoot BeatAPI Music Video and Ecommerce Video tasks using the BeatAPI CLI or public API. Use when a user wants to upload media, check credits or concurrency, create an AI music video or product ad, poll a task, retrieve hosted output, or integrate BeatAPI into an agent workflow.
+description: Create, monitor, and troubleshoot BeatAPI Music Video and Ecommerce Video workflows through the official BeatAPI CLI. Use when a user wants to turn images and audio into an AI music video, make a product ad from product images, upload local workflow media, estimate or check BeatAPI credits and concurrency, manage manual storyboard shots, wait for a task, retrieve hosted output, configure webhooks, or diagnose a BeatAPI API error.
 ---
 
 # BeatAPI Video
 
-## Overview
+Use the `beatapi` CLI as the execution layer. Treat the bundled OpenAPI
+snapshot as the exact API contract.
 
-Use BeatAPI's asynchronous workflow API to turn images and audio into a music
-video, or product images into an ecommerce video ad. Prefer the BeatAPI CLI when
-it is installed; use direct HTTP only for integration work or when the CLI is
-unavailable.
+## Protect the account
 
-## Protect credentials and credits
+- Use the customer's existing BeatAPI account and API key.
+- Read credentials only through `beatapi auth` or `BEATAPI_API_KEY`.
+- Never request a key in chat, pass it as a command argument, print it, or place
+  it in JSON, source files, logs, screenshots, or issue text.
+- Treat task creation, shot editing, and composition as paid mutations.
+- Consider an explicit request to generate or edit authorization for that
+  operation. Ask before spending credits only when the request is ambiguous,
+  material settings are missing, or the operation expands beyond the request.
+- Never describe a queued or processing task as a completed video.
 
-- Read the API key from `BEATAPI_API_KEY`. Never print it, commit it, place it
-  in browser code, or ask the user to paste it into chat.
-- Use the user's existing BeatAPI account and API key. Do not invent a separate
-  plugin account or billing model.
-- Run read-only checks before paid generation: inspect the supplied assets,
-  identify the workflow, and check usage/concurrency.
-- Creating a task consumes credits. Confirm the workflow inputs and material
-  generation settings when they were not clearly specified by the user.
-- Do not report success until the task status is `succeeded` and hosted output
-  media is present.
+## Establish readiness
+
+1. Check that the CLI exists with `beatapi --version`.
+2. If missing, instruct the user to install it with
+   `npm install --global beatapi`; install it only when the user has authorized
+   environment changes.
+3. Run `beatapi auth status` before authenticated work.
+4. If authentication is absent, ask the user to run `beatapi auth login` in a
+   terminal or set `BEATAPI_API_KEY`. Do not ask them to paste the key into the
+   conversation.
+5. Run `beatapi usage` before a paid operation. Check both credit balance and
+   active concurrency.
+
+Skip credential checks for anonymous `beatapi workflows list`.
 
 ## Choose the workflow
 
-- Use `music-video` when the user has one or more images plus an audio track.
-  Typical controls include prompt, language, aspect ratio, resolution, quality,
-  and automatic or manual composition.
-- Use `ecommerce-video` when the user has product images and wants a short ad.
-  Typical controls include duration, prompt, aspect ratio, and language.
-- If local files are provided, upload supported images, audio, or SRT subtitles
-  first and use the returned public HTTPS URLs in the task request.
+- Choose Music Video when the user supplies audio plus 1-7 visual references.
+- Choose automatic Music Video composition unless the user wants to inspect,
+  select, reorder, or edit storyboard shots.
+- Choose manual Music Video composition for those storyboard controls. Read
+  [manual-music-video.md](references/manual-music-video.md) before executing.
+- Choose Ecommerce Video when the user supplies product images and wants a
+  short product advertisement.
+- Do not force unrelated video editing, transcription, generic image
+  generation, or non-BeatAPI API design tasks into this Skill.
 
-## Execute the workflow
+Read [credits-and-limits.md](references/credits-and-limits.md) when estimating
+cost or validating media and generation settings.
 
-1. Inspect the user's assets and creative request.
-2. List workflows when capability discovery is needed.
-3. Check account usage and current concurrency.
-4. Upload local inputs and retain the returned URLs.
-5. Create the selected task.
-6. Poll every 5-10 seconds with a bounded attempt count. Treat `succeeded` and
-   `failed` as terminal states.
-7. For manual Music Video flows, handle `storyboard_ready` or
-   `requires_action` explicitly instead of waiting forever.
-8. Return the task ID, final status, output media, and useful metadata.
+## Prepare inputs
 
-Preferred CLI shapes:
+1. Inspect local paths and public URLs before spending credits.
+2. Upload each supported local image, audio file, or SRT subtitle:
 
-```bash
-beatapi workflows
-beatapi usage
-beatapi file upload ./input.mp3
-beatapi music-video create --json ./music-video.json
-beatapi ecommerce-video create --json ./ecommerce-video.json
-beatapi task get task_123
-beatapi task wait task_123
-```
+   ```bash
+   beatapi files upload ./input.mp3
+   ```
 
-When the CLI is unavailable, follow the endpoint and lifecycle reference in
-`references/api-workflows.md`.
+3. Replace local paths in the request with returned public HTTPS URLs.
+4. Create a temporary JSON request by copying the relevant template from
+   `assets/`; never modify the bundled template in place.
+5. Include only fields supported by
+   [beatapi.openapi.yaml](references/beatapi.openapi.yaml).
 
-## Handle failures
+Reject unsupported media, private-network URLs, localhost URLs, data URLs, and
+unknown fields instead of guessing.
 
-- `401`: the API key is absent, invalid, or revoked. Do not expose the key while
-  diagnosing.
-- `402` or credit errors: report the required and available balance; do not
-  retry blindly.
-- `429`: distinguish rate limiting from concurrency exhaustion and wait only
-  when retrying is appropriate.
-- Validation errors: correct the request rather than retrying it unchanged.
-- `5xx` or network failures: retry with bounded exponential backoff.
-- Failed tasks: preserve `error_code`, `error_message`, and `request_id` when
-  available.
+## Execute automatic Music Video
 
-## Verify against the public contract
+1. Copy `assets/music-video.auto.json` to a temporary working file.
+2. Fill the uploaded/public URLs and requested controls.
+3. Create the task:
 
-For exact fields and current limits, inspect the canonical OpenAPI file:
+   ```bash
+   beatapi music-video create --file /tmp/beatapi-music-video.json
+   ```
 
-`../beatapi-examples/openapi/beatapi.yaml`
+4. Preserve the returned task ID.
+5. Wait with a 5-10 second interval and a bounded attempt count:
 
-Do not infer production behavior from the Skill when it conflicts with that
-contract or a live API response.
+   ```bash
+   beatapi tasks wait TASK_ID --interval 7000 --attempts 120
+   ```
 
+## Execute Ecommerce Video
+
+1. Copy `assets/ecommerce-video.json` to a temporary working file.
+2. Fill the product image URLs, duration, prompt, aspect ratio, and language.
+3. Create and wait:
+
+   ```bash
+   beatapi ecommerce-video create --file /tmp/beatapi-ecommerce-video.json
+   beatapi tasks wait TASK_ID --interval 7000 --attempts 120
+   ```
+
+## Handle read-only and integration requests
+
+- Inspect one task with `beatapi tasks get TASK_ID`.
+- Discover workflows with `beatapi workflows list`.
+- Inspect balance and concurrency with `beatapi usage`.
+- Manage webhook endpoints with `beatapi webhooks list|create|get|update|delete`.
+- Read [api-workflows.md](references/api-workflows.md) for the exact CLI and
+  endpoint map.
+- For application code, use the `beatapi-client` package or the bundled
+  OpenAPI contract. Do not embed the user's API key in client-side code.
+
+## Verify the result
+
+Return:
+
+- workflow and task ID;
+- final or actionable status;
+- hosted output URL(s) only when present;
+- credits charged, settled, or refunded when useful;
+- `request_id`, `error_code`, and `error_message` for failures;
+- the next required action for `storyboard_ready` or `requires_action`.
+
+Call a generation complete only when status is `succeeded` and
+`output.media[]` contains hosted media. Treat `GET /v1/tasks/{task_id}` as the
+source of truth even when webhooks are configured.
+
+## Respond to failures
+
+Read [errors-and-recovery.md](references/errors-and-recovery.md) before
+retrying. In particular:
+
+- do not retry authentication, validation, insufficient-credit, or
+  concurrency errors unchanged;
+- honor `Retry-After` for rate limits;
+- bound retries for network and retryable server failures;
+- preserve the request ID without exposing credentials or private media.

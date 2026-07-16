@@ -4,10 +4,11 @@
   "description": "Create and manage BeatAPI AI music video and ecommerce video workflows from Codex.",
   "author": {
     "name": "BeatAPI",
+    "email": "support@beatapi.io",
     "url": "https://beatapi.io"
   },
   "homepage": "https://beatapi.io",
-  "repository": "https://github.com/erickkkyt/beatapi-examples",
+  "repository": "https://github.com/erickkkyt/beatapi-codex-plugin",
   "license": "MIT",
   "keywords": [
     "beatapi",
@@ -16,10 +17,11 @@
     "ecommerce-video"
   ],
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "BeatAPI",
     "shortDescription": "Create AI music videos and product ads",
-    "longDescription": "Use BeatAPI from Codex to prepare media, check account usage, create asynchronous video tasks, monitor progress, and retrieve hosted results.",
+    "longDescription": "Use one existing BeatAPI account and API key from Codex to upload inputs, check credits and concurrency, create asynchronous Music Video and Ecommerce Video tasks, manage storyboard shots, monitor progress, retrieve hosted results, and configure webhooks.",
     "developerName": "BeatAPI",
     "category": "Creativity",
     "capabilities": [
@@ -30,9 +32,13 @@
     "privacyPolicyURL": "https://beatapi.io/privacy-policy",
     "termsOfServiceURL": "https://beatapi.io/terms-of-service",
     "defaultPrompt": [
-      "Create a music video from these images and audio.",
-      "Turn these product images into a vertical ad video.",
-      "Check my BeatAPI usage and task status."
-    ]
+      "Use $beatapi-video to create a music video from my images and audio.",
+      "Use $beatapi-video to turn my product images into a vertical ad.",
+      "Use $beatapi-video to check my credits and task status."
+    ],
+    "brandColor": "#2563FF",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo-dark.png"
   }
 }

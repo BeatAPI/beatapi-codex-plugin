@@ -12,10 +12,14 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const bundledPath = resolve(root, "contract/beatapi.openapi.yaml");
 const lockPath = resolve(root, "contract/contract.lock.json");
-const siblingSource = resolve(
-  root,
-  "../beatapi-examples/openapi/beatapi.yaml",
-);
+const sourceCandidates = [
+  resolve(root, "../../../beatapi-examples/openapi/beatapi.yaml"),
+  resolve(root, "../beatapi-examples/openapi/beatapi.yaml"),
+  resolve(root, "../../beatapi-examples/openapi/beatapi.yaml"),
+];
+const siblingSource =
+  sourceCandidates.find((candidate) => existsSync(candidate)) ??
+  sourceCandidates[0];
 const sourcePath = process.env.BEATAPI_OPENAPI_SOURCE
   ? resolve(process.env.BEATAPI_OPENAPI_SOURCE)
   : siblingSource;
@@ -102,6 +106,17 @@ if (existsSync(sourcePath)) {
     );
   }
 }
+const embeddedContract = resolve(
+  root,
+  "skills/beatapi-video/references/beatapi.openapi.yaml",
+);
+if (existsSync(embeddedContract)) {
+  const embedded = readFileSync(embeddedContract);
+  if (!embedded.equals(bundled)) {
+    fail(
+      "The embedded Skill contract differs from contract/beatapi.openapi.yaml. Run npm run skill:sync.",
+    );
+  }
+}
 
 console.log(`BeatAPI OpenAPI contract verified (${bundledHash}).`);
-

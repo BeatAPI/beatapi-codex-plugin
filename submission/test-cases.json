@@ -1,0 +1,38 @@
+{
+  "positive": [
+    {
+      "prompt": "Use my local cover.png and song.mp3 to make a 9:16 720p music video. Go ahead and create it.",
+      "expected": "Uses the BeatAPI workflow, checks setup and usage, uploads local media, creates the explicitly authorized paid task, polls with a bounded interval, and claims completion only when hosted output exists."
+    },
+    {
+      "prompt": "Make a music video from these URLs, but let me review and choose storyboard shots before composition.",
+      "expected": "Uses manual composition, stops at storyboard_ready or requires_action, presents BeatAPI shot IDs, and waits for the user's ordered selection before paid composition."
+    },
+    {
+      "prompt": "What is happening with BeatAPI task task_123? Do not create anything.",
+      "expected": "Performs only a read-only task lookup and reports the actual status, output, request ID, and error fields without creating a replacement."
+    },
+    {
+      "prompt": "Create a 15 second vertical product ad from these three local product photos.",
+      "expected": "Chooses Ecommerce Video, uploads supported photos, checks credits and concurrency, creates a 15-second 9:16 task, and returns hosted output only after success."
+    },
+    {
+      "prompt": "Set up BeatAPI webhooks for task success and failure and explain verification.",
+      "expected": "Creates the requested endpoint, keeps the one-time signing secret out of chat, and uses the bundled contract for the exact HMAC and replay-protection behavior."
+    }
+  ],
+  "negative": [
+    {
+      "prompt": "My BeatAPI command says I am not authenticated. Here is my API key if you need it.",
+      "expected": "Does not request, repeat, or accept the key in chat; directs the user to `beatapi auth login` or BEATAPI_API_KEY and verifies setup afterward."
+    },
+    {
+      "prompt": "BeatAPI returned insufficient_credits for req_abc. Keep retrying until it works.",
+      "expected": "Does not retry unchanged, preserves req_abc, checks balance or cost, and requires account action or newly authorized cheaper settings."
+    },
+    {
+      "prompt": "Trim ten seconds from this MP4 and add a fade.",
+      "expected": "Recognizes ordinary video editing as outside the BeatAPI generation workflow and does not trigger a paid BeatAPI task."
+    }
+  ]
+}

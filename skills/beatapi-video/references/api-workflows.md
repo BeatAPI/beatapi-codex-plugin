@@ -1,75 +1,51 @@
-# BeatAPI public workflow reference
+# BeatAPI command and endpoint map
 
 Base URL: `https://api.beatapi.io`
 
-Authentication: send `Authorization: Bearer $BEATAPI_API_KEY` for every endpoint
-except anonymous workflow discovery.
+Authentication: Bearer API key for every endpoint except `GET /v1/workflows`.
+Prefer CLI commands so credential handling and output separation stay
+consistent.
 
-## Core endpoints
-
-| Method | Endpoint | Purpose |
+| Intent | CLI | HTTP |
 | --- | --- | --- |
-| `GET` | `/v1/workflows` | Discover available workflows |
-| `GET` | `/v1/usage` | Read credits, task totals, and concurrency |
-| `POST` | `/v1/files` | Upload supported local workflow inputs |
-| `POST` | `/v1/music-video/tasks` | Create a Music Video task |
-| `POST` | `/v1/ecommerce-video/tasks` | Create an Ecommerce Video task |
-| `GET` | `/v1/tasks/{task_id}` | Read task state and hosted output |
-| `GET/POST` | `/v1/webhooks` | List or create webhook endpoints |
-| `GET/PATCH/DELETE` | `/v1/webhooks/{id}` | Manage a webhook endpoint |
+| Discover workflows | `beatapi workflows list` | `GET /v1/workflows` |
+| Check usage | `beatapi usage` | `GET /v1/usage` |
+| Upload local media | `beatapi files upload PATH` | `POST /v1/files` |
+| Create Music Video | `beatapi music-video create --file INPUT` | `POST /v1/music-video/tasks` |
+| Edit storyboard shot | `beatapi music-video shots edit TASK SHOT --prompt TEXT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/edit` |
+| Get/materialize shot media | `beatapi music-video shots media TASK SHOT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/media` |
+| Compose selected shots | `beatapi music-video compose TASK --shot SHOT` | `POST /v1/music-video/tasks/{task_id}/compose` |
+| Create Ecommerce Video | `beatapi ecommerce-video create --file INPUT` | `POST /v1/ecommerce-video/tasks` |
+| Read task | `beatapi tasks get TASK` | `GET /v1/tasks/{task_id}` |
+| Wait for task | `beatapi tasks wait TASK` | Repeated task lookup |
+| List webhooks | `beatapi webhooks list` | `GET /v1/webhooks` |
+| Create webhook | `beatapi webhooks create --file INPUT` | `POST /v1/webhooks` |
+| Read webhook | `beatapi webhooks get ID` | `GET /v1/webhooks/{id}` |
+| Update webhook | `beatapi webhooks update ID --file INPUT` | `PATCH /v1/webhooks/{id}` |
+| Delete webhook | `beatapi webhooks delete ID` | `DELETE /v1/webhooks/{id}` |
+
+The CLI writes result JSON to stdout and progress/errors to stderr. Use
+`--json` only as a compatibility alias for `--file`.
 
 ## Task lifecycle
 
-Common states:
+Automatic flow:
 
 ```text
 queued -> processing -> succeeded
                      -> failed
 ```
 
-Manual Music Video tasks can also enter:
+Manual Music Video can include:
 
 ```text
-storyboard_ready -> requires_action -> editing -> composing -> succeeded/failed
+queued -> processing -> storyboard_ready/requires_action
+       -> editing -> storyboard_ready/requires_action
+       -> composing -> succeeded/failed
 ```
 
-Poll at a 5-10 second interval with jitter and a bounded attempt count. A task
-lookup remains the source of truth even when webhooks are enabled.
+Poll every 5-10 seconds with jitter and a bounded attempt count. Successful
+hosted files appear in `data.output.media[]`.
 
-Successful hosted files are returned in `data.output.media`. Failed tasks can
-include `error_code` and `error_message`.
-
-## Upload limits
-
-- Maximum file size: 50 MB.
-- Images: PNG, JPG/JPEG, WEBP.
-- Audio: MP3, WAV, AAC, M4A; uploaded audio must be 10-180 seconds.
-- Subtitles: SRT.
-- Videos, PDFs, ZIP archives, private-network URLs, data URLs, and unsupported
-  generic files are not accepted for the launch API.
-
-## Error behavior
-
-The public error envelope is:
-
-```json
-{
-  "error": {
-    "code": "bad_request",
-    "message": "The request body is invalid.",
-    "request_id": "req_example"
-  }
-}
-```
-
-Preserve `request_id` in diagnostics. Retry only network errors and appropriate
-server responses; authentication, validation, credit, and concurrency failures
-usually require a user or request change.
-
-## Canonical source
-
-This reference is intentionally compact. For exact schemas, enums, examples,
-and current limits, read:
-
-`../../beatapi-examples/openapi/beatapi.yaml`
-
+For exact schemas, enums, examples, and response shapes, read
+`beatapi.openapi.yaml` in this directory.

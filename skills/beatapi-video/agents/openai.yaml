@@ -1,4 +1,7 @@
 interface:
   display_name: "BeatAPI Video"
-  short_description: "Create and manage BeatAPI video workflows"
-  default_prompt: "Use BeatAPI to create or manage an AI video task."
+  short_description: "Create and manage BeatAPI AI video workflows"
+  default_prompt: "Use $beatapi-video to create an AI video and return the verified hosted result."
+
+policy:
+  allow_implicit_invocation: true
