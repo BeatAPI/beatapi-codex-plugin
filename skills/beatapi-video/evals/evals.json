@@ -4,9 +4,9 @@
     {
       "id": 1,
       "prompt": "Use my local cover.png and song.mp3 to make a 9:16 720p music video. Go ahead and create it.",
-      "expected_output": "Should trigger the Skill, verify CLI/auth/usage, inspect and upload both local files, build an automatic Music Video request with returned HTTPS URLs, create the paid task without redundant confirmation because generation was explicit, wait with a bounded interval, and report success only with hosted output.",
+      "expected_output": "Should trigger the Skill, prefer bundled BeatAPI MCP tools and otherwise use the CLI fallback, verify setup and usage, inspect and upload both local files, build an automatic Music Video request with returned HTTPS URLs, create the paid task without redundant confirmation because generation was explicit, wait with a bounded interval, and report success only with hosted output.",
       "assertions": [
-        "Uses the BeatAPI CLI",
+        "Prefers BeatAPI MCP tools with an official CLI fallback",
         "Checks authentication and usage",
         "Uploads local media before task creation",
         "Chooses Music Video automatic composition",
@@ -88,9 +88,9 @@
     {
       "id": 7,
       "prompt": "Set up BeatAPI webhooks for task success and failure, then show me how my server should verify events.",
-      "expected_output": "Should use webhook CLI operations for endpoint management, avoid logging the one-time signing secret, and consult the bundled OpenAPI contract for the exact signature and replay-protection behavior instead of inventing it.",
+      "expected_output": "Should use BeatAPI MCP webhook tools when available or webhook CLI operations as a fallback, avoid logging the one-time signing secret, and consult the bundled OpenAPI contract for the exact signature and replay-protection behavior instead of inventing it.",
       "assertions": [
-        "Uses BeatAPI webhook commands",
+        "Uses BeatAPI MCP webhook tools or the CLI fallback",
         "Treats the webhook secret as sensitive",
         "Consults the exact OpenAPI contract",
         "Covers success and failure events",

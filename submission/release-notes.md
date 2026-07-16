@@ -5,7 +5,9 @@ Initial public Skills-only submission.
 - Creates and monitors BeatAPI Music Video and Ecommerce Video workflows.
 - Handles local media upload, manual storyboard review, shot operations,
   composition, task polling, usage checks, and webhook setup.
-- Uses the customer's existing BeatAPI API key through the official CLI or
-  environment without placing credentials in conversations.
+- Prefers compatible BeatAPI MCP tools supplied by the host and otherwise uses
+  the official CLI without placing credentials in conversations.
+- Requires the globally installed `beatapi` CLI for Skills-only hosts that do
+  not supply BeatAPI MCP tools.
 - Matches BeatAPI OpenAPI `1.0.0-launch`.
 - Includes five positive and three negative review cases.

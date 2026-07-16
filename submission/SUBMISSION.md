@@ -18,6 +18,11 @@ This is the complete official path available without deploying new
 infrastructure. The repository's local stdio MCP server is for Codex desktop
 installation and must not be entered as a public MCP URL.
 
+The Skills-only artifact does not include an MCP server. Its public listing and
+review instructions must state that users need Node.js 20.19+ / 22.12+, the
+globally installed `beatapi` CLI, and one-time `beatapi auth login`, unless the
+host already supplies compatible BeatAPI MCP tools.
+
 ## Listing
 
 - Plugin name: **BeatAPI**
@@ -28,7 +33,9 @@ installation and must not be entered as a public MCP URL.
 - Long description: **Use one BeatAPI account and API key to prepare media,
   check credits and concurrency, create asynchronous Music Video and Ecommerce
   Video tasks, manage storyboard shots, monitor progress, retrieve hosted
-  results, and configure webhooks.**
+  results, and configure webhooks. This Skills-only release uses compatible
+  BeatAPI MCP tools supplied by the host or the official BeatAPI CLI installed
+  on the user's machine.**
 - Website: <https://beatapi.io>
 - Support: <https://beatapi.io/dashboard/tickets>
 - Support email: <support@beatapi.io>
@@ -54,7 +61,8 @@ These are account and legal actions, not repository work:
 3. Complete individual or business identity verification as **BeatAPI**.
 4. Confirm country availability and policy attestations.
 5. Upload the Skill ZIP, logo, test cases, and release notes.
-6. Submit for review and respond to reviewer feedback.
+6. Include the standalone CLI prerequisite in the reviewer setup instructions.
+7. Submit for review and respond to reviewer feedback.
 
 ## Future MCP-backed public submission
 

@@ -2,7 +2,7 @@
   "positive": [
     {
       "prompt": "Use my local cover.png and song.mp3 to make a 9:16 720p music video. Go ahead and create it.",
-      "expected": "Uses the BeatAPI workflow, checks setup and usage, uploads local media, creates the explicitly authorized paid task, polls with a bounded interval, and claims completion only when hosted output exists."
+      "expected": "Uses compatible BeatAPI MCP tools when supplied by the host or the official CLI fallback, checks setup and usage, uploads local media, creates the explicitly authorized paid task, polls with a bounded interval, and claims completion only when hosted output exists."
     },
     {
       "prompt": "Make a music video from these URLs, but let me review and choose storyboard shots before composition.",

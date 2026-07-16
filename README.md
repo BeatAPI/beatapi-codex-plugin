@@ -77,6 +77,9 @@ This repository supports two distinct release paths:
    complete installable marketplace and ZIP under `dist/`.
 2. **Public OpenAI Plugin Directory.** `npm run submission:build` creates a
    Skills-only ZIP that can be uploaded to the official submission portal.
+   This artifact contains the Skill but not the local MCP server, so users need
+   the globally installed `beatapi` CLI unless their host supplies compatible
+   BeatAPI MCP tools.
 
 The local plugin includes a stdio MCP server. Official MCP-backed public review
 requires a separately deployed public HTTPS MCP server, domain verification,

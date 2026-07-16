@@ -28,6 +28,10 @@ writeFileSync(
     "requires a separately deployed HTTPS MCP server and is intentionally not",
     "claimed by this Skills-only package.",
     "",
+    "Standalone prerequisite: install Node.js 20.19+ or 22.12+, then run",
+    "`npm install --global beatapi` and `beatapi auth login`, unless the host",
+    "already supplies compatible BeatAPI MCP tools.",
+    "",
   ].join("\n"),
 );
 if (!existsSync(stage)) throw new Error("Submission staging directory is missing.");

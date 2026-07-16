@@ -40,9 +40,15 @@ test("bundled stdio MCP serves BeatAPI tools and protects credentials", async ()
         JSON.stringify({
           data: {
             object: "usage",
-            credits_balance: 1000,
-            active_tasks: 0,
-            concurrency_limit: 5,
+            credit_balance: 1000,
+            total_tasks: 0,
+            credits_settled: 0,
+            credits_refunded: 0,
+            concurrency: {
+              limit: 5,
+              active: 0,
+            },
+            by_workflow: [],
           },
         }),
       );
@@ -226,9 +232,9 @@ test("bundled MCP reuses the API key saved by the BeatAPI CLI", async () => {
       "const args = process.argv.slice(2);",
       "if (args.join(' ') === 'auth status') {",
       "  process.stdout.write('Authenticated via credential-store.\\n');",
-      "  process.stdout.write(JSON.stringify({ object: 'usage', credits_balance: 321 }));",
+      "  process.stdout.write(JSON.stringify({ object: 'usage', credit_balance: 321, total_tasks: 0, credits_settled: 0, credits_refunded: 0, concurrency: { limit: 1, active: 0 }, by_workflow: [] }));",
       "} else if (args.join(' ') === 'usage') {",
-      "  process.stdout.write(JSON.stringify({ object: 'usage', credits_balance: 321 }));",
+      "  process.stdout.write(JSON.stringify({ object: 'usage', credit_balance: 321, total_tasks: 0, credits_settled: 0, credits_refunded: 0, concurrency: { limit: 1, active: 0 }, by_workflow: [] }));",
       "} else {",
       "  process.stderr.write(`unexpected fake CLI args: ${args.join(' ')}\\n`);",
       "  process.exitCode = 2;",
@@ -264,23 +270,126 @@ test("bundled MCP reuses the API key saved by the BeatAPI CLI", async () => {
         result: {
           configured: boolean;
           auth_source: string;
-          usage: { credits_balance: number };
+          usage: { credit_balance: number };
         };
       }
     ).result;
     assert.equal(setupResult.configured, true);
     assert.equal(setupResult.auth_source, "beatapi-cli-keychain");
-    assert.equal(setupResult.usage.credits_balance, 321);
+    assert.equal(setupResult.usage.credit_balance, 321);
 
     const usage = await client.callTool({
       name: "beatapi_get_usage",
       arguments: {},
     });
     assert.equal(
-      (usage.structuredContent as { result: { credits_balance: number } }).result
-        .credits_balance,
+      (usage.structuredContent as { result: { credit_balance: number } }).result
+        .credit_balance,
       321,
     );
+  } finally {
+    await client.close().catch(() => undefined);
+    await transport.close().catch(() => undefined);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("setup reports a missing CLI login as an actionable configuration state", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "beatapi-cli-auth-test-"));
+  const fakeCli = resolve(directory, "fake-beatapi.mjs");
+  await writeFile(
+    fakeCli,
+    [
+      "if (process.argv.slice(2).join(' ') === 'auth status') {",
+      "  process.stdout.write('Not authenticated. Run `beatapi auth login`.\\n');",
+      "  process.exitCode = 1;",
+      "} else {",
+      "  process.exitCode = 2;",
+      "}",
+      "",
+    ].join("\n"),
+    { mode: 0o700 },
+  );
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key, value]) => key !== "BEATAPI_API_KEY" && value !== undefined,
+    ),
+  ) as Record<string, string>;
+  environment.BEATAPI_CLI_PATH = fakeCli;
+
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [resolve(root, "mcp/server.mjs")],
+    cwd: root,
+    env: environment,
+    stderr: "pipe",
+  });
+  const client = new Client({ name: "beatapi-cli-auth-test", version: "0.1.0" });
+  try {
+    await client.connect(transport);
+    const setup = await client.callTool({
+      name: "beatapi_check_setup",
+      arguments: {},
+    });
+    const result = (
+      setup.structuredContent as {
+        result: {
+          configured: boolean;
+          setup_reason: string;
+          next_step: string;
+        };
+      }
+    ).result;
+    assert.equal(setup.isError, undefined);
+    assert.equal(result.configured, false);
+    assert.equal(result.setup_reason, "authentication_required");
+    assert.match(result.next_step, /beatapi auth login/);
+  } finally {
+    await client.close().catch(() => undefined);
+    await transport.close().catch(() => undefined);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("setup preserves unexpected CLI runtime failures as tool errors", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "beatapi-cli-failure-test-"));
+  const fakeCli = resolve(directory, "fake-beatapi.mjs");
+  await writeFile(
+    fakeCli,
+    [
+      "process.stderr.write('temporary credential-store service failure\\n');",
+      "process.exitCode = 7;",
+      "",
+    ].join("\n"),
+    { mode: 0o700 },
+  );
+  const environment = Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key, value]) => key !== "BEATAPI_API_KEY" && value !== undefined,
+    ),
+  ) as Record<string, string>;
+  environment.BEATAPI_CLI_PATH = fakeCli;
+
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [resolve(root, "mcp/server.mjs")],
+    cwd: root,
+    env: environment,
+    stderr: "pipe",
+  });
+  const client = new Client({
+    name: "beatapi-cli-failure-test",
+    version: "0.1.0",
+  });
+  try {
+    await client.connect(transport);
+    const setup = await client.callTool({
+      name: "beatapi_check_setup",
+      arguments: {},
+    });
+    assert.equal(setup.isError, true);
+    assert.match(JSON.stringify(setup), /credential-store service failure/);
+    assert.doesNotMatch(JSON.stringify(setup), /"configured":false/);
   } finally {
     await client.close().catch(() => undefined);
     await transport.close().catch(() => undefined);

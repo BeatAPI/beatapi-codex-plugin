@@ -102,6 +102,37 @@ async function runCli(args: string[], timeout = 15 * 60 * 1000): Promise<unknown
   return parseCliJson(result.stdout);
 }
 
+interface CliExecutionError extends Error {
+  code?: number | string;
+  stdout?: string;
+  stderr?: string;
+}
+
+function cliErrorText(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const cliError = error as CliExecutionError;
+  return [cliError.stderr, cliError.stdout, cliError.message]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map((value) => value.trim())
+    .join("\n");
+}
+
+function isMissingCli(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as CliExecutionError).code === "ENOENT"
+  );
+}
+
+function isMissingCliAuthentication(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const cliError = error as CliExecutionError;
+  return (
+    cliError.code === 1 &&
+    /not authenticated|beatapi auth login/i.test(cliErrorText(error))
+  );
+}
+
 async function withJsonFile<T>(
   value: unknown,
   callback: (path: string) => Promise<T>,
@@ -203,13 +234,30 @@ export class BeatAPIExecutor {
         auth_source: "beatapi-cli-keychain",
         usage: sanitize(await runCli(["auth", "status"])),
       };
-    } catch {
-      return {
-        configured: false,
-        auth_source: null,
-        next_step:
-          "Install the BeatAPI CLI with `npm install --global beatapi`, then run `beatapi auth login` in a terminal. Do not paste the API key into chat.",
-      };
+    } catch (error) {
+      if (isMissingCli(error)) {
+        return {
+          configured: false,
+          auth_source: null,
+          setup_reason: "cli_not_installed",
+          next_step:
+            "Install the BeatAPI CLI with `npm install --global beatapi`, then run `beatapi auth login` in a terminal. Do not paste the API key into chat.",
+        };
+      }
+      if (isMissingCliAuthentication(error)) {
+        return {
+          configured: false,
+          auth_source: null,
+          setup_reason: "authentication_required",
+          next_step:
+            "Run `beatapi auth login` in a terminal, then check setup again. Do not paste the API key into chat.",
+        };
+      }
+      const detail = cliErrorText(error);
+      throw new Error(
+        `Unable to verify BeatAPI CLI setup${detail ? `: ${detail}` : "."}`,
+        { cause: error },
+      );
     }
   }
 

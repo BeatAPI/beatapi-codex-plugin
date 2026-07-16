@@ -3,26 +3,27 @@
 Base URL: `https://api.beatapi.io`
 
 Authentication: Bearer API key for every endpoint except `GET /v1/workflows`.
-Prefer CLI commands so credential handling and output separation stay
-consistent.
+Prefer bundled MCP tools when available. Otherwise use the CLI so credential
+handling and output separation stay consistent.
 
-| Intent | CLI | HTTP |
-| --- | --- | --- |
-| Discover workflows | `beatapi workflows list` | `GET /v1/workflows` |
-| Check usage | `beatapi usage` | `GET /v1/usage` |
-| Upload local media | `beatapi files upload PATH` | `POST /v1/files` |
-| Create Music Video | `beatapi music-video create --file INPUT` | `POST /v1/music-video/tasks` |
-| Edit storyboard shot | `beatapi music-video shots edit TASK SHOT --prompt TEXT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/edit` |
-| Get/materialize shot media | `beatapi music-video shots media TASK SHOT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/media` |
-| Compose selected shots | `beatapi music-video compose TASK --shot SHOT` | `POST /v1/music-video/tasks/{task_id}/compose` |
-| Create Ecommerce Video | `beatapi ecommerce-video create --file INPUT` | `POST /v1/ecommerce-video/tasks` |
-| Read task | `beatapi tasks get TASK` | `GET /v1/tasks/{task_id}` |
-| Wait for task | `beatapi tasks wait TASK` | Repeated task lookup |
-| List webhooks | `beatapi webhooks list` | `GET /v1/webhooks` |
-| Create webhook | `beatapi webhooks create --file INPUT` | `POST /v1/webhooks` |
-| Read webhook | `beatapi webhooks get ID` | `GET /v1/webhooks/{id}` |
-| Update webhook | `beatapi webhooks update ID --file INPUT` | `PATCH /v1/webhooks/{id}` |
-| Delete webhook | `beatapi webhooks delete ID` | `DELETE /v1/webhooks/{id}` |
+| Intent | MCP tool | CLI | HTTP |
+| --- | --- | --- | --- |
+| Check setup | `beatapi_check_setup` | `beatapi auth status` | `GET /v1/usage` |
+| Discover workflows | `beatapi_list_workflows` | `beatapi workflows list` | `GET /v1/workflows` |
+| Check usage | `beatapi_get_usage` | `beatapi usage` | `GET /v1/usage` |
+| Upload local media | `beatapi_upload_file` | `beatapi files upload PATH` | `POST /v1/files` |
+| Create Music Video | `beatapi_create_music_video` | `beatapi music-video create --file INPUT` | `POST /v1/music-video/tasks` |
+| Edit storyboard shot | `beatapi_edit_music_video_shot` | `beatapi music-video shots edit TASK SHOT --prompt TEXT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/edit` |
+| Get/materialize shot media | `beatapi_get_music_video_shot_media` | `beatapi music-video shots media TASK SHOT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/media` |
+| Compose selected shots | `beatapi_compose_music_video` | `beatapi music-video compose TASK --shot SHOT` | `POST /v1/music-video/tasks/{task_id}/compose` |
+| Create Ecommerce Video | `beatapi_create_ecommerce_video` | `beatapi ecommerce-video create --file INPUT` | `POST /v1/ecommerce-video/tasks` |
+| Read task | `beatapi_get_task` | `beatapi tasks get TASK` | `GET /v1/tasks/{task_id}` |
+| Wait for task | `beatapi_wait_for_task` | `beatapi tasks wait TASK` | Repeated task lookup |
+| List webhooks | `beatapi_list_webhooks` | `beatapi webhooks list` | `GET /v1/webhooks` |
+| Create webhook | `beatapi_create_webhook` | `beatapi webhooks create --file INPUT` | `POST /v1/webhooks` |
+| Read webhook | `beatapi_get_webhook` | `beatapi webhooks get ID` | `GET /v1/webhooks/{id}` |
+| Update webhook | `beatapi_update_webhook` | `beatapi webhooks update ID --file INPUT` | `PATCH /v1/webhooks/{id}` |
+| Delete webhook | `beatapi_delete_webhook` | `beatapi webhooks delete ID` | `DELETE /v1/webhooks/{id}` |
 
 The CLI writes result JSON to stdout and progress/errors to stderr. Use
 `--json` only as a compatibility alias for `--file`.

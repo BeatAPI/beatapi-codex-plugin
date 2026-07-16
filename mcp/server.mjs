@@ -31108,7 +31108,7 @@ var BeatAPIClient = class {
           baseDelayMs * 2 ** (attempt - 1)
         );
         const delay = serverDelay ?? Math.round(exponentialDelay * (1 + this.random() * 0.2));
-        await this.sleep(Math.min(maxDelayMs, delay));
+        await this.sleep(delay);
       } catch (error51) {
         if (error51 instanceof BeatAPIError) throw error51;
         if (attempt >= maxAttempts) {
@@ -31209,7 +31209,9 @@ var BeatAPIClient = class {
     assertPositiveInteger(intervalMs, "intervalMs");
     assertPositiveInteger(maxAttempts, "maxAttempts");
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const task = await this.getTask(taskId);
+      const task = await this.getTask(taskId, {
+        retry: { maxAttempts: 3 }
+      });
       options.onUpdate?.(task, attempt);
       if (ACTIONABLE_OR_TERMINAL_STATUSES.has(task.status)) return task;
       if (attempt < maxAttempts) {
@@ -31287,6 +31289,19 @@ async function runCli(args, timeout = 15 * 60 * 1e3) {
     maxBuffer: 8 * 1024 * 1024
   });
   return parseCliJson(result.stdout);
+}
+function cliErrorText(error51) {
+  if (!(error51 instanceof Error)) return String(error51);
+  const cliError = error51;
+  return [cliError.stderr, cliError.stdout, cliError.message].filter((value) => Boolean(value?.trim())).map((value) => value.trim()).join("\n");
+}
+function isMissingCli(error51) {
+  return error51 instanceof Error && error51.code === "ENOENT";
+}
+function isMissingCliAuthentication(error51) {
+  if (!(error51 instanceof Error)) return false;
+  const cliError = error51;
+  return cliError.code === 1 && /not authenticated|beatapi auth login/i.test(cliErrorText(error51));
 }
 async function withJsonFile(value, callback) {
   const directory = await mkdtemp(resolve(tmpdir(), "beatapi-plugin-"));
@@ -31375,12 +31390,28 @@ var BeatAPIExecutor = class {
         auth_source: "beatapi-cli-keychain",
         usage: sanitize(await runCli(["auth", "status"]))
       };
-    } catch {
-      return {
-        configured: false,
-        auth_source: null,
-        next_step: "Install the BeatAPI CLI with `npm install --global beatapi`, then run `beatapi auth login` in a terminal. Do not paste the API key into chat."
-      };
+    } catch (error51) {
+      if (isMissingCli(error51)) {
+        return {
+          configured: false,
+          auth_source: null,
+          setup_reason: "cli_not_installed",
+          next_step: "Install the BeatAPI CLI with `npm install --global beatapi`, then run `beatapi auth login` in a terminal. Do not paste the API key into chat."
+        };
+      }
+      if (isMissingCliAuthentication(error51)) {
+        return {
+          configured: false,
+          auth_source: null,
+          setup_reason: "authentication_required",
+          next_step: "Run `beatapi auth login` in a terminal, then check setup again. Do not paste the API key into chat."
+        };
+      }
+      const detail = cliErrorText(error51);
+      throw new Error(
+        `Unable to verify BeatAPI CLI setup${detail ? `: ${detail}` : "."}`,
+        { cause: error51 }
+      );
     }
   }
   async executeDirect(name, input) {

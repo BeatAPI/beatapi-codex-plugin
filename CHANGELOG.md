@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Prefer bundled MCP execution in the canonical Skill with CLI fallback.
+- Distinguish missing authentication from unexpected CLI runtime failures.
+- Align MCP usage fixtures with the current BeatAPI OpenAPI contract.
+- Clarify that the public Skills-only package does not bundle the local MCP
+  server and may require the official CLI.
+
 ## 0.1.0 - 2026-07-17
 
 - Added the canonical `beatapi-video` Skill and eight review/evaluation cases.
