@@ -1,0 +1,38 @@
+{
+  "name": "beatapi-codex-plugin",
+  "version": "0.1.0",
+  "description": "Create and manage BeatAPI AI music video and ecommerce video workflows from Codex.",
+  "author": {
+    "name": "BeatAPI",
+    "url": "https://beatapi.io"
+  },
+  "homepage": "https://beatapi.io",
+  "repository": "https://github.com/erickkkyt/beatapi-examples",
+  "license": "MIT",
+  "keywords": [
+    "beatapi",
+    "ai-video",
+    "music-video",
+    "ecommerce-video"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "BeatAPI",
+    "shortDescription": "Create AI music videos and product ads",
+    "longDescription": "Use BeatAPI from Codex to prepare media, check account usage, create asynchronous video tasks, monitor progress, and retrieve hosted results.",
+    "developerName": "BeatAPI",
+    "category": "Creativity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://beatapi.io",
+    "privacyPolicyURL": "https://beatapi.io/privacy-policy",
+    "termsOfServiceURL": "https://beatapi.io/terms-of-service",
+    "defaultPrompt": [
+      "Create a music video from these images and audio.",
+      "Turn these product images into a vertical ad video.",
+      "Check my BeatAPI usage and task status."
+    ]
+  }
+}
