@@ -70,7 +70,7 @@ if (mode === "write") {
     lockPath,
     `${JSON.stringify(
       {
-        source: "https://github.com/erickkkyt/beatapi-cli/tree/main/packages/client",
+        source: "https://github.com/BeatAPI/beatapi-cli/tree/main/packages/client",
         ref: gitRef(source),
         sha256: sourceHash,
       },

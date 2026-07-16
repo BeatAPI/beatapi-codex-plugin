@@ -79,7 +79,7 @@ test("plugin manifest wires the skill, local MCP, and production assets", async 
   const manifest = JSON.parse(
     await readFile(resolve(root, ".codex-plugin/plugin.json"), "utf8"),
   ) as Record<string, unknown>;
-  assert.equal(manifest.repository, "https://github.com/erickkkyt/beatapi-codex-plugin");
+  assert.equal(manifest.repository, "https://github.com/BeatAPI/beatapi-codex-plugin");
   assert.equal(manifest.skills, "./skills/");
   assert.equal(manifest.mcpServers, "./.mcp.json");
 
