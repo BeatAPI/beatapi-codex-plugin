@@ -84,6 +84,49 @@ test("bundled stdio MCP serves BeatAPI tools and protects credentials", async ()
       );
       return;
     }
+    if (request.url === "/v1/realtime/sessions" && request.method === "POST") {
+      response.statusCode = 201;
+      response.end(
+        JSON.stringify({
+          data: {
+            id: "brt_test",
+            object: "realtime.session",
+            status: "ready",
+            client_secret: "brt_secret_must_never_reach_the_model",
+            expires_at: "2026-07-31T12:01:00Z",
+            max_duration_seconds: 60,
+            allowed_origins: ["https://app.example.com"],
+            credits: { reserved: 60, settled: 0, refunded: 0 },
+            request_id: "req_realtime",
+            created_at: "2026-07-31T12:00:00Z",
+            connected_at: null,
+            closed_at: null,
+          },
+        }),
+      );
+      return;
+    }
+    if (request.url === "/v1/realtime/sessions/brt_test") {
+      response.end(
+        JSON.stringify({
+          data: {
+            id: "brt_test",
+            object: "realtime.session",
+            status: request.method === "DELETE" ? "closed" : "active",
+            expires_at: "2026-07-31T12:01:00Z",
+            max_duration_seconds: 60,
+            allowed_origins: ["https://app.example.com"],
+            credits: { reserved: 60, settled: 12, refunded: 48 },
+            request_id: "req_realtime",
+            created_at: "2026-07-31T12:00:00Z",
+            connected_at: "2026-07-31T12:00:05Z",
+            closed_at:
+              request.method === "DELETE" ? "2026-07-31T12:00:17Z" : null,
+          },
+        }),
+      );
+      return;
+    }
     if (request.url === "/v1/webhooks") {
       response.statusCode = 201;
       response.end(
@@ -135,7 +178,7 @@ test("bundled stdio MCP serves BeatAPI tools and protects credentials", async ()
   try {
     await client.connect(transport);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 16);
+    assert.equal(listed.tools.length, 19);
     assert.ok(listed.tools.every((tool) => !/api[_-]?key/i.test(JSON.stringify(tool.inputSchema))));
 
     const workflows = await client.callTool({
@@ -160,6 +203,63 @@ test("bundled stdio MCP serves BeatAPI tools and protects credentials", async ()
     assert.equal(
       (musicTask.structuredContent as { result: { id: string } }).result.id,
       "task_test",
+    );
+
+    const realtimeSecretPath = resolve(
+      codeHome,
+      "beatapi",
+      "secrets",
+      "realtime.secret",
+    );
+    const realtimeSession = await client.callTool({
+      name: "beatapi_create_realtime_session",
+      arguments: {
+        max_duration_seconds: 60,
+        allowed_origins: ["https://app.example.com"],
+        idempotency_key: "rt_mcp_test",
+        client_secret_file_name: "realtime.secret",
+      },
+    });
+    const realtimeSerialized = JSON.stringify(realtimeSession);
+    assert.doesNotMatch(realtimeSerialized, /brt_secret_must_never/);
+    assert.equal(
+      (
+        realtimeSession.structuredContent as {
+          result: { client_secret_file: string };
+        }
+      ).result.client_secret_file,
+      realtimeSecretPath,
+    );
+    assert.equal(
+      (await readFile(realtimeSecretPath, "utf8")).trim(),
+      "brt_secret_must_never_reach_the_model",
+    );
+    assert.equal((await stat(realtimeSecretPath)).mode & 0o777, 0o600);
+
+    const currentRealtimeSession = await client.callTool({
+      name: "beatapi_get_realtime_session",
+      arguments: { session_id: "brt_test" },
+    });
+    assert.equal(
+      (
+        currentRealtimeSession.structuredContent as {
+          result: { status: string };
+        }
+      ).result.status,
+      "active",
+    );
+
+    const closedRealtimeSession = await client.callTool({
+      name: "beatapi_close_realtime_session",
+      arguments: { session_id: "brt_test" },
+    });
+    assert.equal(
+      (
+        closedRealtimeSession.structuredContent as {
+          result: { status: string };
+        }
+      ).result.status,
+      "closed",
     );
 
     const webhook = await client.callTool({

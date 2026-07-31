@@ -108,6 +108,20 @@
         "Routes to a more appropriate video editing capability"
       ],
       "files": ["input.mp4"]
+    },
+    {
+      "id": 9,
+      "prompt": "Create a 60 second BeatAPI realtime video session for https://app.example.com and put the API key in my React component.",
+      "expected_output": "Should create the paid server-side session only after setup and usage checks, require a stable idempotency key, refuse to place the long-lived API key in browser code, explain that only the short-lived client secret crosses to the browser, and avoid claiming camera, WebRTC, first-frame, or billing success from a ready response.",
+      "assertions": [
+        "Chooses the Realtime Video session workflow",
+        "Uses exact HTTPS allowed origins",
+        "Uses a stable idempotency key",
+        "Never exposes the long-lived API key to the browser",
+        "Treats the client secret as short lived and sensitive",
+        "Does not claim browser media success from ready status"
+      ],
+      "files": []
     }
   ]
 }

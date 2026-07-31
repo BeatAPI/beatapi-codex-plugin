@@ -1,8 +1,8 @@
 # BeatAPI Codex Plugin
 
-Create and manage BeatAPI AI Music Video and Ecommerce Video workflows directly
-from Codex. The plugin combines the canonical `beatapi-video` Skill with a
-bundled local MCP server and uses the same API key as the BeatAPI CLI.
+Create and manage BeatAPI asynchronous workflows and Realtime Video sessions
+directly from Codex. The plugin combines the canonical `beatapi-video` Skill
+with a bundled local MCP server and uses the same API key as the BeatAPI CLI.
 
 ## What users can do
 
@@ -11,6 +11,7 @@ bundled local MCP server and uses the same API key as the BeatAPI CLI.
 - create automatic or manual Music Video tasks;
 - inspect, edit, materialize, and compose storyboard shots;
 - create Ecommerce Video tasks;
+- create, inspect, and close short-lived Realtime Video sessions;
 - poll asynchronous tasks until a terminal or actionable state;
 - create, inspect, update, and delete webhook endpoints.
 
@@ -18,6 +19,11 @@ The plugin does not put API keys in prompts or MCP tool arguments. It first uses
 `BEATAPI_API_KEY`; otherwise its local MCP server invokes the installed
 `beatapi` CLI, which reads the key saved by `beatapi auth login` from the
 operating-system credential manager.
+
+Realtime creation stores the one-time browser `client_secret` in a local file
+with mode `0600`; it is never returned to the model. The agent manages only the
+server-side session. Camera permission, WebRTC, and rendering remain in the
+browser SDK.
 
 ## Install for Codex desktop
 
@@ -51,6 +57,7 @@ Restart the desktop app after installation. Useful starter requests include:
 - “Use `$beatapi-video` to create a music video from my images and audio.”
 - “Turn these product photos into a 15-second 9:16 ad.”
 - “Check my BeatAPI credits and the status of task `task_...`.”
+- “Create a 60-second Realtime Video session for `https://app.example.com`.”
 
 ## Package layout
 

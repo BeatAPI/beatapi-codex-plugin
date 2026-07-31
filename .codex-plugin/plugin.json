@@ -1,7 +1,7 @@
 {
   "name": "beatapi-codex-plugin",
-  "version": "0.1.0",
-  "description": "Create and manage BeatAPI AI music video and ecommerce video workflows from Codex.",
+  "version": "0.2.0",
+  "description": "Create and manage BeatAPI async and realtime AI video APIs from Codex.",
   "author": {
     "name": "BeatAPI",
     "email": "support@beatapi.io",
@@ -14,14 +14,15 @@
     "beatapi",
     "ai-video",
     "music-video",
-    "ecommerce-video"
+    "ecommerce-video",
+    "realtime-video"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "BeatAPI",
-    "shortDescription": "Create AI music videos and product ads",
-    "longDescription": "Use one existing BeatAPI account and API key from Codex to upload inputs, check credits and concurrency, create asynchronous Music Video and Ecommerce Video tasks, manage storyboard shots, monitor progress, retrieve hosted results, and configure webhooks.",
+    "shortDescription": "Manage async and realtime AI video APIs",
+    "longDescription": "Use one existing BeatAPI account and API key from Codex to upload inputs, check credits and concurrency, create asynchronous Music Video and Ecommerce Video tasks, manage short-lived Realtime Video sessions, monitor progress, retrieve hosted results, and configure webhooks.",
     "developerName": "BeatAPI",
     "category": "Creativity",
     "capabilities": [
@@ -34,6 +35,7 @@
     "defaultPrompt": [
       "Use $beatapi-video to create a music video from my images and audio.",
       "Use $beatapi-video to turn my product images into a vertical ad.",
+      "Use $beatapi-video to create a 60-second realtime session for my web app.",
       "Use $beatapi-video to check my credits and task status."
     ],
     "brandColor": "#2563FF",

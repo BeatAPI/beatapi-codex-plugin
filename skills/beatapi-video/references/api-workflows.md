@@ -17,6 +17,9 @@ handling and output separation stay consistent.
 | Get/materialize shot media | `beatapi_get_music_video_shot_media` | `beatapi music-video shots media TASK SHOT` | `POST /v1/music-video/tasks/{task_id}/shots/{shot_id}/media` |
 | Compose selected shots | `beatapi_compose_music_video` | `beatapi music-video compose TASK --shot SHOT` | `POST /v1/music-video/tasks/{task_id}/compose` |
 | Create Ecommerce Video | `beatapi_create_ecommerce_video` | `beatapi ecommerce-video create --file INPUT` | `POST /v1/ecommerce-video/tasks` |
+| Create Realtime session | `beatapi_create_realtime_session` | `beatapi realtime sessions create --duration 60 --origin URL` | `POST /v1/realtime/sessions` |
+| Read Realtime session | `beatapi_get_realtime_session` | `beatapi realtime sessions get SESSION` | `GET /v1/realtime/sessions/{session_id}` |
+| Close Realtime session | `beatapi_close_realtime_session` | `beatapi realtime sessions close SESSION` | `DELETE /v1/realtime/sessions/{session_id}` |
 | Read task | `beatapi_get_task` | `beatapi tasks get TASK` | `GET /v1/tasks/{task_id}` |
 | Wait for task | `beatapi_wait_for_task` | `beatapi tasks wait TASK` | Repeated task lookup |
 | List webhooks | `beatapi_list_webhooks` | `beatapi webhooks list` | `GET /v1/webhooks` |

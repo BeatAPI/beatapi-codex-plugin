@@ -1,8 +1,8 @@
 {
   "name": "beatapi-codex-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Codex plugin for BeatAPI AI music video and ecommerce video workflows.",
+  "description": "Codex plugin for BeatAPI async and realtime AI video APIs.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build-mcp.mjs",
@@ -24,7 +24,7 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@types/node": "26.1.1",
     "esbuild": "0.28.1",
     "tsx": "4.20.6",

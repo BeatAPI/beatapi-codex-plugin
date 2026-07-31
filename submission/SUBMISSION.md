@@ -29,11 +29,11 @@ host already supplies compatible BeatAPI MCP tools.
 - Submission type: **Skills only**
 - Category: **Creativity**
 - Developer: **BeatAPI**
-- Short description: **Create AI music videos and product ads**
+- Short description: **Manage async and realtime AI video APIs**
 - Long description: **Use one BeatAPI account and API key to prepare media,
   check credits and concurrency, create asynchronous Music Video and Ecommerce
-  Video tasks, manage storyboard shots, monitor progress, retrieve hosted
-  results, and configure webhooks. This Skills-only release uses compatible
+  Video tasks, manage Realtime Video sessions and storyboard shots, monitor
+  progress, retrieve hosted results, and configure webhooks. This Skills-only release uses compatible
   BeatAPI MCP tools supplied by the host or the official BeatAPI CLI installed
   on the user's machine.**
 - Website: <https://beatapi.io>
@@ -51,6 +51,8 @@ host already supplies compatible BeatAPI MCP tools.
 1. Use `$beatapi-video` to create a music video from my images and audio.
 2. Use `$beatapi-video` to turn my product images into a vertical ad.
 3. Use `$beatapi-video` to check my credits and task status.
+4. Use `$beatapi-video` to create a 60-second Realtime Video session for
+   `https://app.example.com`.
 
 ## Required owner-side portal steps
 

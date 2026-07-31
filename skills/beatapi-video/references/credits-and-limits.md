@@ -48,3 +48,15 @@ Run `beatapi usage` before paid work. Check:
 Do not treat a sufficient balance as proof that concurrency is available.
 Storyboard-ready and requires-action tasks can have settled credits without
 counting as active processing.
+
+## Realtime sessions
+
+- Allowed maximum durations are 15, 60, and 300 seconds.
+- Every create request requires 1-10 exact HTTPS `allowed_origins` and an
+  `Idempotency-Key`.
+- Creation reserves credits; billing activates only after the first accepted
+  heartbeat after remote output begins. Inspect `credits.reserved`,
+  `credits.settled`, and `credits.refunded` on the session.
+- A Realtime session has its own capacity rules. Treat
+  `realtime_capacity_unavailable` and `user_concurrency_exceeded` as signals to
+  close/wait, not as reasons to retry in a tight loop.

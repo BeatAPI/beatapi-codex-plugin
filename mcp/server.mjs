@@ -3644,7 +3644,12 @@ var require_fast_uri = __commonJS({
     }
     function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
-      const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
+      const { parsed: baseParsed, malformedAuthorityOrPort: baseMalformed } = parseWithStatus(baseURI, schemelessOptions);
+      const { parsed: relativeParsed, malformedAuthorityOrPort: relativeMalformed } = parseWithStatus(relativeURI, schemelessOptions);
+      if (baseMalformed || relativeMalformed) {
+        throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
+      }
+      const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
@@ -3769,6 +3774,8 @@ var require_fast_uri = __commonJS({
       return uriTokens.join("");
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
+    var AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/;
+    var AUTHORITY_INTRODUCER_REGION = /^(?:[^#/:?]+:)?([/\\\t\n\r]*)/;
     function getParseError(parsed, matches) {
       if (matches[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
         return 'URI path must start with "/" when authority is present.';
@@ -3796,6 +3803,25 @@ var require_fast_uri = __commonJS({
           uri2 = options.scheme + ":" + uri2;
         } else {
           uri2 = "//" + uri2;
+        }
+      }
+      const authorityMatch = uri2.match(AUTHORITY_PREFIX);
+      if (authorityMatch !== null && authorityMatch[1].indexOf("\\") !== -1) {
+        parsed.error = "URI authority must not contain a literal backslash.";
+        malformedAuthorityOrPort = true;
+      }
+      const introducerMatch = uri2.match(AUTHORITY_INTRODUCER_REGION);
+      if (introducerMatch !== null) {
+        const region = introducerMatch[1];
+        const normalizedRegion = region.replace(/[\t\n\r]/g, "");
+        if (normalizedRegion.length >= 2) {
+          if (normalizedRegion.slice(0, 2) !== "//") {
+            parsed.error = parsed.error || "URI authority must not contain a literal backslash.";
+            malformedAuthorityOrPort = true;
+          } else if (region.length !== normalizedRegion.length) {
+            parsed.error = parsed.error || "URI authority introducer must not contain whitespace.";
+            malformedAuthorityOrPort = true;
+          }
         }
       }
       const matches = uri2.match(URI_PARSE);
@@ -23042,16 +23068,32 @@ function normalizeObjectSchema(schema) {
   }
   return void 0;
 }
+function getDotPath(path) {
+  if (path.length === 0) {
+    return "object root";
+  }
+  return path.reduce((acc, seg, index) => {
+    if (index === 0) {
+      return String(seg);
+    }
+    if (typeof seg === "number") {
+      return `${acc}[${seg}]`;
+    }
+    return `${acc}.${seg}`;
+  }, "");
+}
 function getParseErrorMessage(error51) {
   if (error51 && typeof error51 === "object") {
+    if ("issues" in error51 && Array.isArray(error51.issues) && error51.issues.length > 0) {
+      return error51.issues.map((i) => {
+        if (!i.path?.length) {
+          return i.message;
+        }
+        return `${i.message} at ${getDotPath(i.path)}`;
+      }).join("\n");
+    }
     if ("message" in error51 && typeof error51.message === "string") {
       return error51.message;
-    }
-    if ("issues" in error51 && Array.isArray(error51.issues) && error51.issues.length > 0) {
-      const firstIssue = error51.issues[0];
-      if (firstIssue && typeof firstIssue === "object" && "message" in firstIssue) {
-        return String(firstIssue.message);
-      }
     }
     try {
       return JSON.stringify(error51);
@@ -29667,16 +29709,7 @@ var Server = class extends Protocol {
     if (!methodSchema) {
       throw new Error("Schema is missing a method literal");
     }
-    let methodValue;
-    if (isZ4Schema(methodSchema)) {
-      const v4Schema = methodSchema;
-      const v4Def = v4Schema._zod?.def;
-      methodValue = v4Def?.value ?? v4Schema.value;
-    } else {
-      const v3Schema = methodSchema;
-      const legacyDef = v3Schema._def;
-      methodValue = legacyDef?.value ?? v3Schema.value;
-    }
+    const methodValue = getLiteralValue(methodSchema);
     if (typeof methodValue !== "string") {
       throw new Error("Schema method literal must be a string");
     }
@@ -30864,8 +30897,17 @@ var EMPTY_COMPLETION_RESULT = {
 import process3 from "node:process";
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/shared/stdio.js
+var STDIO_DEFAULT_MAX_BUFFER_SIZE = 10 * 1024 * 1024;
 var ReadBuffer = class {
+  constructor(options) {
+    this._maxBufferSize = options?.maxBufferSize ?? STDIO_DEFAULT_MAX_BUFFER_SIZE;
+  }
   append(chunk) {
+    const newSize = (this._buffer?.length ?? 0) + chunk.length;
+    if (newSize > this._maxBufferSize) {
+      this.clear();
+      throw new Error(`ReadBuffer exceeded maximum size of ${this._maxBufferSize} bytes`);
+    }
     this._buffer = this._buffer ? Buffer.concat([this._buffer, chunk]) : chunk;
   }
   readMessage() {
@@ -30893,18 +30935,24 @@ function serializeMessage(message) {
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 var StdioServerTransport = class {
-  constructor(_stdin = process3.stdin, _stdout = process3.stdout) {
+  constructor(_stdin = process3.stdin, _stdout = process3.stdout, options) {
     this._stdin = _stdin;
     this._stdout = _stdout;
-    this._readBuffer = new ReadBuffer();
     this._started = false;
     this._ondata = (chunk) => {
-      this._readBuffer.append(chunk);
-      this.processReadBuffer();
+      try {
+        this._readBuffer.append(chunk);
+        this.processReadBuffer();
+      } catch (error51) {
+        this.onerror?.(error51);
+        this.close().catch(() => {
+        });
+      }
     };
     this._onerror = (error51) => {
       this.onerror?.(error51);
     };
+    this._readBuffer = new ReadBuffer({ maxBufferSize: options?.maxBufferSize });
   }
   /**
    * Starts listening for messages on stdin.
@@ -31082,6 +31130,9 @@ var BeatAPIClient = class {
     assertPositiveInteger(maxDelayMs, "retry.maxDelayMs");
     const headers = new Headers({ accept: "application/json" });
     if (authenticated) headers.set("authorization", `Bearer ${this.apiKey}`);
+    for (const [name, value] of new Headers(options.headers)) {
+      headers.set(name, value);
+    }
     let body;
     if (options.body instanceof FormData) {
       body = options.body;
@@ -31138,6 +31189,28 @@ var BeatAPIClient = class {
   }
   getUsage() {
     return this.request("/v1/usage");
+  }
+  createRealtimeSession(input, options) {
+    const idempotencyKey = options.idempotencyKey.trim();
+    if (!idempotencyKey) {
+      throw new TypeError("idempotencyKey must not be empty.");
+    }
+    return this.request("/v1/realtime/sessions", {
+      method: "POST",
+      body: input,
+      headers: { "idempotency-key": idempotencyKey }
+    });
+  }
+  getRealtimeSession(sessionId) {
+    return this.request(
+      `/v1/realtime/sessions/${encodePathSegment(sessionId)}`
+    );
+  }
+  closeRealtimeSession(sessionId) {
+    return this.request(
+      `/v1/realtime/sessions/${encodePathSegment(sessionId)}`,
+      { method: "DELETE" }
+    );
   }
   getTask(taskId, options = {}) {
     return this.request(`/v1/tasks/${encodePathSegment(taskId)}`, {
@@ -31258,7 +31331,9 @@ function sanitize(value) {
   if (typeof value === "string") return redactText(value);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
-    Object.entries(value).filter(([key]) => !/^(secret|api[_-]?key|authorization)$/i.test(key)).map(([key, child]) => [key, sanitize(child)])
+    Object.entries(value).filter(
+      ([key]) => !/^(secret|client[_-]?secret|api[_-]?key|authorization)$/i.test(key)
+    ).map(([key, child]) => [key, sanitize(child)])
   );
 }
 function parseCliJson(stdout) {
@@ -31318,12 +31393,12 @@ async function withJsonFile(value, callback) {
     await rm(directory, { recursive: true, force: true });
   }
 }
-async function preflightSecretPath(requested) {
+async function preflightSecretPath(requested, prefix = "webhook") {
   const root = resolve(
     process.env.CODEX_HOME?.trim() || resolve(homedir(), ".codex"),
     "beatapi/secrets"
   );
-  const filename = typeof requested === "string" && requested.trim() ? requested.trim() : `webhook-${Date.now()}.secret`;
+  const filename = typeof requested === "string" && requested.trim() ? requested.trim() : `${prefix}-${Date.now()}.secret`;
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(filename)) {
     throw new Error(
       "secret_file_name must be a simple filename containing only letters, numbers, dot, underscore, or hyphen."
@@ -31338,6 +31413,26 @@ async function preflightSecretPath(requested) {
     if (error51.code !== "ENOENT") throw error51;
   }
   return path;
+}
+async function saveRealtimeClientSecret(session, path, rollback) {
+  const secret = session.client_secret;
+  if (typeof secret !== "string" || !secret) {
+    await rollback().catch(() => void 0);
+    throw new Error("BeatAPI did not return a usable Realtime client secret.");
+  }
+  try {
+    await writeFile(path, `${secret}
+`, { mode: 384, flag: "wx" });
+    await chmod(path, 384);
+  } catch (error51) {
+    await rollback().catch(() => void 0);
+    throw new Error(
+      "Unable to store the one-time Realtime client secret; the session was closed.",
+      { cause: error51 }
+    );
+  }
+  const clean = sanitize(session);
+  return { ...clean, client_secret_file: path };
 }
 async function saveWebhookSecret(endpoint, path, rollback) {
   const secret = endpoint.secret;
@@ -31467,6 +31562,37 @@ var BeatAPIExecutor = class {
             input
           )
         );
+      case "beatapi_create_realtime_session": {
+        const secretPath = await preflightSecretPath(
+          input.client_secret_file_name,
+          "realtime"
+        );
+        const session = await this.direct.createRealtimeSession(
+          without(input, [
+            "idempotency_key",
+            "client_secret_file_name"
+          ]),
+          { idempotencyKey: stringValue(input, "idempotency_key") }
+        );
+        const sessionId = String(session.id || "");
+        return saveRealtimeClientSecret(
+          session,
+          secretPath,
+          () => this.direct.closeRealtimeSession(sessionId)
+        );
+      }
+      case "beatapi_get_realtime_session":
+        return sanitize(
+          await this.direct.getRealtimeSession(
+            stringValue(input, "session_id")
+          )
+        );
+      case "beatapi_close_realtime_session":
+        return sanitize(
+          await this.direct.closeRealtimeSession(
+            stringValue(input, "session_id")
+          )
+        );
       case "beatapi_get_task":
         return sanitize(await this.direct.getTask(stringValue(input, "task_id")));
       case "beatapi_wait_for_task":
@@ -31563,6 +31689,50 @@ var BeatAPIExecutor = class {
           (path) => runCli(["ecommerce-video", "create", "--file", path])
         );
         break;
+      case "beatapi_create_realtime_session": {
+        const secretPath = await preflightSecretPath(
+          input.client_secret_file_name,
+          "realtime"
+        );
+        const result2 = await runCli([
+          "realtime",
+          "sessions",
+          "create",
+          "--duration",
+          String(input.max_duration_seconds),
+          ...input.allowed_origins.flatMap((origin) => [
+            "--origin",
+            origin
+          ]),
+          ...Object.entries(
+            input.metadata ?? {}
+          ).flatMap(([key, value]) => ["--metadata", `${key}=${value}`]),
+          "--idempotency-key",
+          stringValue(input, "idempotency_key")
+        ]);
+        const sessionId = String(result2.id || "");
+        return saveRealtimeClientSecret(
+          result2,
+          secretPath,
+          () => runCli(["realtime", "sessions", "close", sessionId])
+        );
+      }
+      case "beatapi_get_realtime_session":
+        result = await runCli([
+          "realtime",
+          "sessions",
+          "get",
+          stringValue(input, "session_id")
+        ]);
+        break;
+      case "beatapi_close_realtime_session":
+        result = await runCli([
+          "realtime",
+          "sessions",
+          "close",
+          stringValue(input, "session_id")
+        ]);
+        break;
       case "beatapi_get_task":
         result = await runCli(["tasks", "get", stringValue(input, "task_id")]);
         break;
@@ -31658,6 +31828,16 @@ var resolution = external_exports.enum(["540p", "720p", "1080p"]);
 var language = external_exports.enum(["en", "zh"]);
 var uri = external_exports.string().url();
 var webhookEvents = external_exports.array(external_exports.enum(["task.succeeded", "task.failed"]));
+var secretFileName = external_exports.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/).optional();
+var httpsOrigin = external_exports.string().url().superRefine((value, context) => {
+  const parsed = new URL(value);
+  if (parsed.protocol !== "https:" || parsed.pathname !== "/" || parsed.search || parsed.hash || parsed.username || parsed.password) {
+    context.addIssue({
+      code: "custom",
+      message: "An exact HTTPS origin without path, query, or fragment is required."
+    });
+  }
+});
 var musicVideoInput = external_exports.object({
   images: imageUrls,
   audio_url: httpsUrl,
@@ -31782,6 +31962,37 @@ var toolDefinitions = [
     annotations: write
   },
   {
+    name: "beatapi_create_realtime_session",
+    title: "Create BeatAPI Realtime session",
+    description: "Paid mutation: reserve credits and create a short-lived Realtime Video browser session. The one-time client secret is written to a local mode-0600 file and is never returned in the tool response.",
+    inputSchema: external_exports.object({
+      max_duration_seconds: external_exports.union([
+        external_exports.literal(15),
+        external_exports.literal(60),
+        external_exports.literal(300)
+      ]),
+      allowed_origins: external_exports.array(httpsOrigin).min(1).max(10),
+      metadata: external_exports.record(external_exports.string(), external_exports.string()).optional(),
+      idempotency_key: external_exports.string().trim().min(1).max(255),
+      client_secret_file_name: secretFileName
+    }).strict(),
+    annotations: write
+  },
+  {
+    name: "beatapi_get_realtime_session",
+    title: "Get BeatAPI Realtime session",
+    description: "Read the current server-side Realtime session status and credit settlement without exposing its one-time client secret.",
+    inputSchema: external_exports.object({ session_id: id }).strict(),
+    annotations: readOnly
+  },
+  {
+    name: "beatapi_close_realtime_session",
+    title: "Close BeatAPI Realtime session",
+    description: "Destructive mutation: close one Realtime Video session and release/refund any eligible unused reservation.",
+    inputSchema: external_exports.object({ session_id: id }).strict(),
+    annotations: destructive
+  },
+  {
     name: "beatapi_get_task",
     title: "Get BeatAPI task",
     description: "Read the latest server-side status and hosted output for one BeatAPI task.",
@@ -31814,7 +32025,7 @@ var toolDefinitions = [
       url: uri,
       description: external_exports.string().optional(),
       events: webhookEvents.optional(),
-      secret_file_name: external_exports.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/).optional()
+      secret_file_name: secretFileName
     }).strict(),
     annotations: write
   },

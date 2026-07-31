@@ -19,6 +19,10 @@
     {
       "prompt": "Set up BeatAPI webhooks for task success and failure and explain verification.",
       "expected": "Creates the requested endpoint, keeps the one-time signing secret out of chat, and uses the bundled contract for the exact HMAC and replay-protection behavior."
+    },
+    {
+      "prompt": "Create a 60 second BeatAPI realtime session for https://app.example.com.",
+      "expected": "Checks setup and usage, uses the exact HTTPS origin and a stable idempotency key, stores the one-time client secret outside model-visible output, and does not claim browser camera, WebRTC, first-frame, or billing success from a ready session."
     }
   ],
   "negative": [

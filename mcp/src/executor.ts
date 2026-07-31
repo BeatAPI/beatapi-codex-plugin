@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import {
   BeatAPIClient,
   BeatAPIError,
+  type CreateRealtimeSessionInput,
   type CreateWebhookInput,
   type EcommerceVideoTaskInput,
   type MusicVideoShotEditInput,
@@ -64,7 +65,10 @@ function sanitize(value: unknown): unknown {
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => !/^(secret|api[_-]?key|authorization)$/i.test(key))
+      .filter(
+        ([key]) =>
+          !/^(secret|client[_-]?secret|api[_-]?key|authorization)$/i.test(key),
+      )
       .map(([key, child]) => [key, sanitize(child)]),
   );
 }
@@ -151,7 +155,10 @@ async function withJsonFile<T>(
   }
 }
 
-async function preflightSecretPath(requested: unknown): Promise<string> {
+async function preflightSecretPath(
+  requested: unknown,
+  prefix = "webhook",
+): Promise<string> {
   const root = resolve(
     process.env.CODEX_HOME?.trim() || resolve(homedir(), ".codex"),
     "beatapi/secrets",
@@ -159,7 +166,7 @@ async function preflightSecretPath(requested: unknown): Promise<string> {
   const filename =
     typeof requested === "string" && requested.trim()
       ? requested.trim()
-      : `webhook-${Date.now()}.secret`;
+      : `${prefix}-${Date.now()}.secret`;
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(filename)) {
     throw new Error(
       "secret_file_name must be a simple filename containing only letters, numbers, dot, underscore, or hyphen.",
@@ -174,6 +181,30 @@ async function preflightSecretPath(requested: unknown): Promise<string> {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   return path;
+}
+
+async function saveRealtimeClientSecret(
+  session: Record<string, unknown>,
+  path: string,
+  rollback: () => Promise<unknown>,
+): Promise<Record<string, unknown>> {
+  const secret = session.client_secret;
+  if (typeof secret !== "string" || !secret) {
+    await rollback().catch(() => undefined);
+    throw new Error("BeatAPI did not return a usable Realtime client secret.");
+  }
+  try {
+    await writeFile(path, `${secret}\n`, { mode: 0o600, flag: "wx" });
+    await chmod(path, 0o600);
+  } catch (error) {
+    await rollback().catch(() => undefined);
+    throw new Error(
+      "Unable to store the one-time Realtime client secret; the session was closed.",
+      { cause: error },
+    );
+  }
+  const clean = sanitize(session) as Record<string, unknown>;
+  return { ...clean, client_secret_file: path };
 }
 
 async function saveWebhookSecret(
@@ -314,6 +345,35 @@ export class BeatAPIExecutor {
             input as EcommerceVideoTaskInput,
           ),
         );
+      case "beatapi_create_realtime_session": {
+        const secretPath = await preflightSecretPath(
+          input.client_secret_file_name,
+          "realtime",
+        );
+        const session = (await this.direct.createRealtimeSession(
+          without(input, [
+            "idempotency_key",
+            "client_secret_file_name",
+          ]) as CreateRealtimeSessionInput,
+          { idempotencyKey: stringValue(input, "idempotency_key") },
+        )) as unknown as Record<string, unknown>;
+        const sessionId = String(session.id || "");
+        return saveRealtimeClientSecret(session, secretPath, () =>
+          this.direct.closeRealtimeSession(sessionId),
+        );
+      }
+      case "beatapi_get_realtime_session":
+        return sanitize(
+          await this.direct.getRealtimeSession(
+            stringValue(input, "session_id"),
+          ),
+        );
+      case "beatapi_close_realtime_session":
+        return sanitize(
+          await this.direct.closeRealtimeSession(
+            stringValue(input, "session_id"),
+          ),
+        );
       case "beatapi_get_task":
         return sanitize(await this.direct.getTask(stringValue(input, "task_id")));
       case "beatapi_wait_for_task":
@@ -405,6 +465,48 @@ export class BeatAPIExecutor {
         result = await withJsonFile(input, (path) =>
           runCli(["ecommerce-video", "create", "--file", path]),
         );
+        break;
+      case "beatapi_create_realtime_session": {
+        const secretPath = await preflightSecretPath(
+          input.client_secret_file_name,
+          "realtime",
+        );
+        const result = (await runCli([
+          "realtime",
+          "sessions",
+          "create",
+          "--duration",
+          String(input.max_duration_seconds),
+          ...(input.allowed_origins as string[]).flatMap((origin) => [
+            "--origin",
+            origin,
+          ]),
+          ...Object.entries(
+            (input.metadata as Record<string, string> | undefined) ?? {},
+          ).flatMap(([key, value]) => ["--metadata", `${key}=${value}`]),
+          "--idempotency-key",
+          stringValue(input, "idempotency_key"),
+        ])) as Record<string, unknown>;
+        const sessionId = String(result.id || "");
+        return saveRealtimeClientSecret(result, secretPath, () =>
+          runCli(["realtime", "sessions", "close", sessionId]),
+        );
+      }
+      case "beatapi_get_realtime_session":
+        result = await runCli([
+          "realtime",
+          "sessions",
+          "get",
+          stringValue(input, "session_id"),
+        ]);
+        break;
+      case "beatapi_close_realtime_session":
+        result = await runCli([
+          "realtime",
+          "sessions",
+          "close",
+          stringValue(input, "session_id"),
+        ]);
         break;
       case "beatapi_get_task":
         result = await runCli(["tasks", "get", stringValue(input, "task_id")]);

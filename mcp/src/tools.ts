@@ -41,6 +41,27 @@ const resolution = z.enum(["540p", "720p", "1080p"]);
 const language = z.enum(["en", "zh"]);
 const uri = z.string().url();
 const webhookEvents = z.array(z.enum(["task.succeeded", "task.failed"]));
+const secretFileName = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/)
+  .optional();
+const httpsOrigin = z.string().url().superRefine((value, context) => {
+  const parsed = new URL(value);
+  if (
+    parsed.protocol !== "https:" ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.username ||
+    parsed.password
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "An exact HTTPS origin without path, query, or fragment is required.",
+    });
+  }
+});
 
 const musicVideoInput = z
   .object({
@@ -187,6 +208,42 @@ export const toolDefinitions: readonly ToolDefinition[] = [
     annotations: write,
   },
   {
+    name: "beatapi_create_realtime_session",
+    title: "Create BeatAPI Realtime session",
+    description:
+      "Paid mutation: reserve credits and create a short-lived Realtime Video browser session. The one-time client secret is written to a local mode-0600 file and is never returned in the tool response.",
+    inputSchema: z
+      .object({
+        max_duration_seconds: z.union([
+          z.literal(15),
+          z.literal(60),
+          z.literal(300),
+        ]),
+        allowed_origins: z.array(httpsOrigin).min(1).max(10),
+        metadata: z.record(z.string(), z.string()).optional(),
+        idempotency_key: z.string().trim().min(1).max(255),
+        client_secret_file_name: secretFileName,
+      })
+      .strict(),
+    annotations: write,
+  },
+  {
+    name: "beatapi_get_realtime_session",
+    title: "Get BeatAPI Realtime session",
+    description:
+      "Read the current server-side Realtime session status and credit settlement without exposing its one-time client secret.",
+    inputSchema: z.object({ session_id: id }).strict(),
+    annotations: readOnly,
+  },
+  {
+    name: "beatapi_close_realtime_session",
+    title: "Close BeatAPI Realtime session",
+    description:
+      "Destructive mutation: close one Realtime Video session and release/refund any eligible unused reservation.",
+    inputSchema: z.object({ session_id: id }).strict(),
+    annotations: destructive,
+  },
+  {
     name: "beatapi_get_task",
     title: "Get BeatAPI task",
     description: "Read the latest server-side status and hosted output for one BeatAPI task.",
@@ -224,11 +281,7 @@ export const toolDefinitions: readonly ToolDefinition[] = [
         url: uri,
         description: z.string().optional(),
         events: webhookEvents.optional(),
-        secret_file_name: z
-          .string()
-          .trim()
-          .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/)
-          .optional(),
+        secret_file_name: secretFileName,
       })
       .strict(),
     annotations: write,
