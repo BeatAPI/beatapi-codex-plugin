@@ -2,11 +2,16 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-31
+
+- Added Realtime Video session create, read, and close MCP tools.
+- Store the one-time Realtime browser client secret in a mode-`0600` local file
+  and keep it out of model-visible tool results.
+- Synchronized the canonical Skill, official client runtime, and public OpenAPI
+  contract to the Realtime baseline.
+- Added exact-origin, duration, idempotency, billing, and browser trust-boundary
+  guidance.
 - Prefer bundled MCP execution in the canonical Skill with CLI fallback.
-- Distinguish missing authentication from unexpected CLI runtime failures.
-- Align MCP usage fixtures with the current BeatAPI OpenAPI contract.
-- Clarify that the public Skills-only package does not bundle the local MCP
-  server and may require the official CLI.
 
 ## 0.1.0 - 2026-07-17
 

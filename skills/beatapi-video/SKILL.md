@@ -1,6 +1,6 @@
 ---
 name: beatapi-video
-description: Create, monitor, and troubleshoot BeatAPI Music Video and Ecommerce Video workflows through bundled BeatAPI MCP tools when available or the official BeatAPI CLI as a fallback. Use when a user wants to turn images and audio into an AI music video, make a product ad from product images, upload local workflow media, estimate or check BeatAPI credits and concurrency, manage manual storyboard shots, wait for a task, retrieve hosted output, configure webhooks, or diagnose a BeatAPI API error.
+description: Create, monitor, and troubleshoot BeatAPI Music Video, Ecommerce Video, and Realtime Video sessions through bundled BeatAPI MCP tools when available or the official BeatAPI CLI as a fallback. Use when a user wants to generate an AI video, create or inspect a realtime browser session, upload workflow media, check credits and concurrency, manage storyboard shots, retrieve hosted output, configure webhooks, or diagnose a BeatAPI API error.
 ---
 
 # BeatAPI Video
@@ -55,6 +55,10 @@ Skip credential checks for anonymous `beatapi_list_workflows` or
   [manual-music-video.md](references/manual-music-video.md) before executing.
 - Choose Ecommerce Video when the user supplies product images and wants a
   short product advertisement.
+- Choose Realtime Video when the user needs a short-lived interactive browser
+  session. Read [realtime-video.md](references/realtime-video.md) first. The
+  agent may manage the server-side session but does not own camera permission,
+  WebRTC negotiation, or browser rendering.
 - Do not force unrelated video editing, transcription, generic image
   generation, or non-BeatAPI API design tasks into this Skill.
 
@@ -123,6 +127,27 @@ unknown fields instead of guessing.
   and endpoint map.
 - For application code, use the `beatapi-client` package or the bundled
   OpenAPI contract. Do not embed the user's API key in client-side code.
+
+## Manage a Realtime Video session
+
+1. Confirm the caller supplied one or more exact HTTPS browser origins and a
+   maximum duration of 15, 60, or 300 seconds.
+2. Treat create as a paid mutation. Use a stable idempotency key for retries.
+3. With MCP, call `beatapi_create_realtime_session`. With the CLI fallback:
+
+   ```bash
+   beatapi realtime sessions create --duration 60 \
+     --origin https://app.example.com \
+     --idempotency-key rt_request_123
+   ```
+
+4. Never copy the long-lived `sk_` key into browser code. The create response
+   may contain a one-time, short-lived `client_secret`; disclose it only through
+   the user's trusted server-to-browser flow, never in chat or logs.
+5. Inspect or close with `beatapi_get_realtime_session` /
+   `beatapi_close_realtime_session`, or `beatapi realtime sessions get|close`.
+6. A `ready` session is allocated, not proof of camera access, WebRTC
+   connection, first remote frame, or billing activation.
 
 ## Verify the result
 

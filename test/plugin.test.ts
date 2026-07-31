@@ -17,6 +17,9 @@ const expectedToolNames = [
   "beatapi_get_music_video_shot_media",
   "beatapi_compose_music_video",
   "beatapi_create_ecommerce_video",
+  "beatapi_create_realtime_session",
+  "beatapi_get_realtime_session",
+  "beatapi_close_realtime_session",
   "beatapi_get_task",
   "beatapi_wait_for_task",
   "beatapi_list_webhooks",
@@ -49,6 +52,7 @@ test("marks read, write, paid, and destructive tools accurately", () => {
     "beatapi_wait_for_task",
     "beatapi_list_webhooks",
     "beatapi_get_webhook",
+    "beatapi_get_realtime_session",
   ]) {
     assert.equal(byName.get(name)?.annotations.readOnlyHint, true, name);
   }
@@ -58,6 +62,7 @@ test("marks read, write, paid, and destructive tools accurately", () => {
     "beatapi_edit_music_video_shot",
     "beatapi_compose_music_video",
     "beatapi_create_ecommerce_video",
+    "beatapi_create_realtime_session",
   ]) {
     const tool = byName.get(name);
     assert.equal(tool?.annotations.readOnlyHint, false, name);
@@ -68,8 +73,15 @@ test("marks read, write, paid, and destructive tools accurately", () => {
     byName.get("beatapi_delete_webhook")?.annotations.destructiveHint,
     true,
   );
+  assert.equal(
+    byName.get("beatapi_close_realtime_session")?.annotations.destructiveHint,
+    true,
+  );
   for (const tool of toolDefinitions) {
-    if (tool.name !== "beatapi_delete_webhook") {
+    if (
+      tool.name !== "beatapi_delete_webhook" &&
+      tool.name !== "beatapi_close_realtime_session"
+    ) {
       assert.notEqual(tool.annotations.destructiveHint, true, tool.name);
     }
   }
