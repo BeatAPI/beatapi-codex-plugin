@@ -11,6 +11,11 @@
 
 # BeatAPI Agent Plugin
 
+For a host-independent onboarding prompt, use
+`set up https://beatapi.io/SKILL.md`. The repository root [`SKILL.md`](SKILL.md)
+mirrors that setup contract; the detailed installable Skill remains under
+`skills/beatapi-video/`.
+
 A cross-host Agent Toolkit plugin for discovering live BeatAPI models and
 running text, image, video, Effect, analysis, and production workflow
 APIs through one local MCP interface.
